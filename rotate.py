@@ -31,16 +31,16 @@ def process_dir(path, output_path=None, recursive=False):
     if not os.path.isdir(path):
         print(path, 'is not a directory!')
     else:
-        for elt in os.listdir(path):
-            elt_path = os.path.join(path, elt)
-            elt_output_path = os.path.join(output_path, elt)
+        for element in os.listdir(path):
+            element_path = os.path.join(path, element)
+            element_output_path = os.path.join(output_path, element)
 
-            if os.path.isdir(elt_path) and recursive:
-                process_dir(elt_path, output_path, recursive)
+            if os.path.isdir(element_path) and recursive:
+                process_dir(element_path, output_path, recursive)
 
-            elif os.path.isfile(elt_path) and re.match(PICTURE_RE, elt_path):
-                print("Rotating %s, saving to %s" % (elt, output_path))
-                process_img(elt_path, elt_output_path)
+            elif os.path.isfile(element_path) and re.match(PICTURE_RE, element_path):
+                print("Rotating %s, saving to %s" % (element, output_path))
+                process_img(element_path, element_output_path)
 
 
 def main(args):
