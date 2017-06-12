@@ -19,6 +19,23 @@ from PIL import Image
 PICTURE_RE = re.compile(r'.*\.jpg$', re.IGNORECASE)
 
 
+def input_from_user(path):
+    """Opens path with feh, waits for input from user"""
+    feh = subprocess.Popen(['feh', path])
+    # show massage in command line and ask for number shown in feh
+    print("Input number from image:")
+    number = input()
+    feh.kill()
+    return int(number)
+
+
+def process_manualy(path):
+    with Image.open(path) as img:
+        width = img.size[0]
+        img_tmp = img.crop((0, 0, width, width-300))
+        img_tmp.save('tmp.jpg')
+        return input_from_user('tmp.jpg')
+
 def process_img(path, output_path, original_name):
     # """ This function rotates images to portrait rotation """
     # print("Opening image %s" % path)
@@ -28,18 +45,8 @@ def process_img(path, output_path, original_name):
         img_tmp = img.crop((0, 0, width, width-300))
         img_tmp.save('tmp.jpg')
 
-        # NOTE: The STARTUPINFO class and following constants are only available on Windows.
-        # si = subprocess.STARTUPINFO()
-        # si.dwFlags = si.dwFlags | subprocess.STARTF_USESHOWWINDOW
-        # si.wShowWindow = subprocess.SW_HIDE
-        # feh = subprocess.Popen(['feh', 'tmp.jpg'], startupinfo=si)
+        number = input_from_user('tmp.jpg')
 
-        feh = subprocess.Popen(['feh', 'tmp.jpg'])
-
-        print ("Input number from image:")
-        number = input()
-
-        feh.kill()
 
         new_path = os.path.join(output_path, str(number) + '_' + original_name)
         print("Save to %s" % new_path)
