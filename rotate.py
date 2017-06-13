@@ -29,11 +29,14 @@ def determine_rotation(size, tags=None):
 
 
 
-def process_img(path, output_path, rotation=0, tags=None):
+def rotate_img(path, output_path, data=None, tags=None):
     """ This function rotates images to portrait rotation """
     with Image.open(path) as img:
-        if rotation == 0:
+        rotaion = 0
+        if data is None:
             rotation = determine_rotation(img.size, tags)
+        elif data is not None:
+            rotation = data
         img = img.rotate(-rotation, expand=True)
         img.save(output_path)
     return rotation
@@ -56,7 +59,7 @@ def process_dir(path, output_path=None, recursive=False):
 
             elif os.path.isfile(element_path) and re.match(PICTURE_RE, element_path):
                 print("Rotating %s, saving to %s" % (element, output_path))
-                process_img(element_path, element_output_path)
+                rotate_img(element_path, element_output_path)
 
 
 def main(args):

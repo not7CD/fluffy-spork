@@ -1,6 +1,6 @@
 """ Collection of scripts to help organize large batches of document images. """
 import os
-# import re
+import subprocess
 from datetime import datetime
 from pymongo import MongoClient
 
@@ -13,50 +13,74 @@ import resize
 
 def preprocess(my_db, args):
     """Preporcessing of images before OCR"""
-    substep_queue = [(
-        rotate.process_img,
-        os.path.join(
-            args.paths['preprocess'], str(rotate.__name__)),
-        {"$and": [
-            {"steps.rotate.data": {"$exists": False}},
-            {"$or": [
-                {"steps.rotate": {"$exists": False}},
-                {"tags.flip": {"$exists": True}}]
-             }
-        ]
-        }
-    )
-    ]
+    substep_queue = []
 
-    for step, step_path, step_query in substep_queue:
-        if not os.path.exists(step_path):
-            os.makedirs(step_path)
+    substep = rotate.rotate_img
+    substep_queue.append(
+        (
+            substep,
+            'rotate',
+            os.path.join(args.paths['preprocess'], str(substep.__name__)),
+            {"steps." + str(substep.__name__): {"$exists": False}}
+        ))
+
+    substep = resize.resize_300dpi
+    substep_queue.append(
+        (
+            substep,
+            'rotate_img',
+            os.path.join(args.paths['preprocess'], str(substep.__name__)),
+            {"steps." + str(substep.__name__): {"$exists": False}}
+        ))
+    substep = cleanimage.imagemagic_textcleaner
+    substep_queue.append(
+        (
+            substep,
+            'resize_300dpi',
+            os.path.join(args.paths['preprocess'], str(substep.__name__)),
+            {"steps." + str(substep.__name__): {"$exists": False}}
+        ))
+
+    for step, previous_step, step_outpath, step_query in substep_queue:
+        print('Running step: %s' % (step.__name__))
+        if not os.path.exists(step_outpath):
+            os.makedirs(step_outpath)
         cursor = my_db.documents.find(step_query)
+        feh = subprocess.Popen(['feh', 'tmp.jpg'])
         for document in cursor:
             this = {"file_name": document['file_name']}
-            substep_input_path = document['steps']['raw']['path']
+            substep_input_path = document['steps'][previous_step]['path']
             substep_output_path = os.path.join(
-                step_path, document['file_name'])
+                step_outpath, document['file_name'])
             tags = None
             if 'tags' in document:
                 tags = document['tags']
-
-            step_data = 0
+            step_data = None
+            if 'data' in document['steps'][previous_step]:
+                step_data = document['steps'][previous_step]['data']
+            # print(document['steps'][previous_step])
+            # print(step_data)
             step_data = step(substep_input_path, substep_output_path,
                              step_data, tags=tags)
+            feh.kill()
+            feh = subprocess.Popen(['feh', substep_output_path])
             update = {
                 "$set": {
-                    "steps.rotate": {
+                    "steps." + str(step.__name__): {
                         "data": step_data,
                         "path": substep_output_path,
                         "date": datetime.now()
                     }
                 }
             }
+            # print(update)
             # , '$unset': {'tags.flip': None}
             result = my_db.documents.update_one(this, update)
             if result.modified_count > 0:
-                print('%s: %s' % (str(step.__name__), this))
+                print('%s: %s with %s' %
+                      (str(step.__name__), this['file_name'], step_data))
+        feh.kill()
+
 
 
 def clean_add_tags(document):

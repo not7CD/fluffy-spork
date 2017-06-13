@@ -3,19 +3,28 @@ from PIL import Image
 import pytesseract
 
 
-
-def imagemagic_textcleaner(inpath, outpath):
-    subprocess.check_call(['./textcleaner', '-g',
+def imagemagic_textcleaner(inpath, outpath, data=None, tags=None):
+    args = [
+        '-g',
+        '-e', 'stretch',
+        '-f', '25',
+        '-o', '10',
+        '-t', '30',
+        '-u',
+        '-s', '1',
+        '-T',
+        '-p', '5']
+    subprocess.check_call(['./textcleaner',
+                           '-g',
                            '-e', 'stretch',
-                           '-f', '20',
-                           '-o', '15',
+                           '-f', '25',
+                           '-o', '10',
                            '-t', '30',
                            '-u',
                            '-s', '1',
                            '-T',
                            '-p', '5', inpath, outpath])
-    return outpath
-
+    return args
 
 
 def main():
