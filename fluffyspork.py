@@ -7,48 +7,56 @@ from pymongo import MongoClient
 import populatedb
 import numbermanualy
 import rotate
+import cleanimage
+import resize
 
 
 def preprocess(my_db, args):
     """Preporcessing of images before OCR"""
+    substep_queue = [(
+        rotate.process_img,
+        os.path.join(
+            args.paths['preprocess'], str(rotate.__name__)),
+        {"$and": [
+            {"steps.rotate.data": {"$exists": False}},
+            {"$or": [
+                {"steps.rotate": {"$exists": False}},
+                {"tags.flip": {"$exists": True}}]
+             }
+        ]
+        }
+    )
+    ]
 
-    query = {
-        "$and": [{"steps.rotate.data": {"$exists": False}},
-                 {"$or": [{"steps.rotate": {"$exists": False}}, {"tags.flip": {"$exists": True}}]
-                  }]
-    }
+    for step, step_path, step_query in substep_queue:
+        if not os.path.exists(step_path):
+            os.makedirs(step_path)
+        cursor = my_db.documents.find(step_query)
+        for document in cursor:
+            this = {"file_name": document['file_name']}
+            substep_input_path = document['steps']['raw']['path']
+            substep_output_path = os.path.join(
+                step_path, document['file_name'])
+            tags = None
+            if 'tags' in document:
+                tags = document['tags']
 
-    substep_path = os.path.join(
-        args.paths['preprocess'], str(rotate.__name__))
-    # print(substep_path)
-    if not os.path.exists(substep_path):
-        os.makedirs(substep_path)
-
-    cursor = my_db.documents.find(query)
-    for document in cursor:
-        this = {"file_name": document['file_name']}
-        substep_input_path = document['steps']['raw']['path']
-        substep_output_path = os.path.join(substep_path, document['file_name'])
-        tags = None
-        if 'tags' in document:
-            tags = document['tags']
-
-        rotation = 0
-        rotation = rotate.process_img(
-            substep_input_path, substep_output_path, rotation=rotation, tags=tags)
-        update = {
-            "$set": {
-                "steps.rotate": {
-                    "data": rotation,
-                    "path": substep_output_path,
-                    "date": datetime.now()
+            step_data = 0
+            step_data = step(substep_input_path, substep_output_path,
+                             step_data, tags=tags)
+            update = {
+                "$set": {
+                    "steps.rotate": {
+                        "data": step_data,
+                        "path": substep_output_path,
+                        "date": datetime.now()
+                    }
                 }
             }
-        }
-        # , '$unset': {'tags.flip': None}
-        result = my_db.documents.update_one(this, update)
-        if result.modified_count > 0:
-            print('%s: %s' % (str(rotate.__name__),this))
+            # , '$unset': {'tags.flip': None}
+            result = my_db.documents.update_one(this, update)
+            if result.modified_count > 0:
+                print('%s: %s' % (str(step.__name__), this))
 
 
 def clean_add_tags(document):
