@@ -1,29 +1,26 @@
 """Testing module for fluffyspork"""
 
 import unittest
-import fluffyspork
+import rotate
 
 test_paths = {'raw': 'test/raw',    'sorted': 'test/sorted'}
 test_database = {'name': 'test-fluffyspork'}
 
 
-class DataBase(unittest.TestCase):
-    """docstring for DataBase."""
-
-    def test_add_raw(self):
+class RotateKnownValues(unittest.TestCase):
+    """test rotate.py."""
+    known_values = [
+        ([200, 300], None, 0),
+        ([400, 300], None, 90),
+        ([200, 300], {'flip':None}, 180),
+        ([400, 300], {'flip':None}, 270)
+        ]
+    def test_determine_rotation(self):
         """test_add_raw test automatic adding of files from raw folder"""
-        pass
+        for size, tags, expected in self.known_values:
+            actual = rotate.determine_rotation(size, tags)
+            self.assertEqual(expected, actual, 'Wrong rotation')
 
-
-class ProcessDirectory(unittest.TestCase):
-    """process_directory is a generator used to process all items in dir"""
-
-    def test_recursive(self):
-        """Print contents of test/"""
-        def print_file(arg):
-            print(arg)
-
-        fluffyspork.process_directory(test_paths['raw'], print_file, True)
 
 if __name__ == '__main__':
     unittest.main()

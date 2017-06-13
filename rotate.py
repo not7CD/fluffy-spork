@@ -7,22 +7,36 @@
 import argparse
 import os
 import re
-import cv2
+# import cv2
 
 from PIL import Image
 
 PICTURE_RE = re.compile(r'.*\.jpg$', re.IGNORECASE)
 
 
-def process_img(path, output_path):
+def determine_rotation(size, tags=None):
+    """Returns original rotation from expected"""
+    rotation = 0
+    width, height = size
+    if width > height:
+        rotation += 90
+    try:
+        if 'flip' in tags:
+            rotation += 180
+    except TypeError:
+        pass
+    return rotation
+
+
+
+def process_img(path, output_path, rotation=0, tags=None):
     """ This function rotates images to portrait rotation """
     with Image.open(path) as img:
-        width, height = img.size
-        if width > height:
-            img = img.rotate(-90, expand=True)
-
+        if rotation == 0:
+            rotation = determine_rotation(img.size, tags)
+        img = img.rotate(-rotation, expand=True)
         img.save(output_path)
-    return output_path
+    return rotation
 
 
 def process_dir(path, output_path=None, recursive=False):
