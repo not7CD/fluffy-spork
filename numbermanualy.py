@@ -34,9 +34,13 @@ def input_from_user(path):
 def process_manualy(path):
     """Returns str"""
     with Image.open(path) as img:
+        size = 730, 730
         width = img.size[0]
-        img_tmp = img.crop((0, 0, width, width-300))
-        img_tmp.save('tmp.jpg')
+        # img_tmp = img.thumbnail(size)
+        # img_tmp.save('tmp.jpg')
+        img = img.crop((0, 0, width, width))
+        img.thumbnail(size)
+        img.save('tmp.jpg')
         return input_from_user('tmp.jpg')
 
 def process_img(path, output_path, original_name):
