@@ -7,6 +7,7 @@
 import argparse
 import os
 import re
+import cv2
 
 from PIL import Image
 
@@ -21,6 +22,7 @@ def process_img(path, output_path):
             img = img.rotate(-90, expand=True)
 
         img.save(output_path)
+    return output_path
 
 
 def process_dir(path, output_path=None, recursive=False):
