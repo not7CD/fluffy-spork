@@ -3,12 +3,61 @@ import os
 import subprocess
 from datetime import datetime
 from pymongo import MongoClient
+import time
 
 import populatedb
 import numbermanualy
 import rotate
 import cleanimage
 import resize
+import extract
+
+
+def clean_tags(inpath=None, outpath=None, data=None, tags=None):
+    set_dict = {}
+    set_dict["date"] = datetime.now()
+    unset_dict = {
+        'steps.simple_regexr.tags': None
+    }
+    return (set_dict, unset_dict)
+
+
+def exec_step(step_tulpe, document):
+    step, previous_step, step_outpath, step_query = step_tulpe
+    substep_output_path = os.path.join(
+        step_outpath, document['file_name'])
+    try:
+        substep_input_path = document['steps'][previous_step]['path']
+    except KeyError as e:
+        substep_input_path = substep_output_path
+        print(e)
+    tags = None
+    if 'tags' in document:
+        tags = document['tags']
+    step_data = None
+    if 'data' in document['steps'][previous_step]:
+        step_data = document['steps'][previous_step]['data']
+    step_data = step(substep_input_path, substep_output_path,
+                     step_data, tags=tags)
+
+    set_dict = unset_dict = None
+    if isinstance(step_data, dict):
+        set_dict = step_data
+    elif isinstance(step_data, tuple):
+        set_dict, unset_dict = step_data
+    else:
+        set_dict = {
+            "data": step_data,
+            "path": substep_output_path
+        }
+        set_dict["date"] = datetime.now()
+    if set_dict == {}:
+        update = None
+    else:
+        update = {"$set": {"steps." + str(step.__name__): set_dict}}
+        if unset_dict is not None:
+            update["$unset"] = unset_dict
+    return update
 
 
 def preprocess(my_db, args):
@@ -40,53 +89,54 @@ def preprocess(my_db, args):
             os.path.join(args.paths['preprocess'], str(substep.__name__)),
             {"steps." + str(substep.__name__): {"$exists": False}}
         ))
+    substep = extract.simple_tesseract
+    substep_queue.append(
+        (
+            substep,
+            'imagemagic_textcleaner',
+            os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
+            {"steps." + str(substep.__name__): {"$exists": False}}
+        ))
 
-    for step, previous_step, step_outpath, step_query in substep_queue:
-        print('Running step: %s' % (step.__name__))
-        if not os.path.exists(step_outpath):
-            os.makedirs(step_outpath)
-        feh = subprocess.Popen(['feh', 'tmp.jpg'])
-        document = my_db.documents.find_one(step_query)
+    substep = extract.simple_regexr
+    substep_queue.append(
+        (
+            substep,
+            'simple_tesseract',
+            os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
+            {"$or": [
+                {"steps." + str(substep.__name__): {"$exists": False}},
+                {"steps." + str(substep.__name__) +
+                 ".tags": {"$exists": False}}
+            ]}
+        ))
+    substep = clean_tags
+    substep_queue.append(
+        (
+            substep,
+            'simple_regexr',
+            os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
+            {"steps.simple_regexr.tags": {"$exists": True}}
+        ))
+
+    for substep_in_queue in substep_queue:
+        print('== Running step: %s' % (substep_in_queue[0].__name__))
+        if not os.path.exists(substep_in_queue[2]):
+            os.makedirs(substep_in_queue[2])
+        document = my_db.documents.find_one(substep_in_queue[-1])
+        data_str = 'No update'
         while document is not None:
-            if True:
-                this = {"file_name": document['file_name']}
-                substep_input_path = document['steps'][previous_step]['path']
-                substep_output_path = os.path.join(
-                    step_outpath, document['file_name'])
-                tags = None
-                if 'tags' in document:
-                    tags = document['tags']
-                step_data = None
-                if 'data' in document['steps'][previous_step]:
-                    step_data = document['steps'][previous_step]['data']
-                # print(document['steps'][previous_step])
-                # print(step_data)
-                step_data = step(substep_input_path, substep_output_path,
-                                 step_data, tags=tags)
-                feh.kill()
-                feh = subprocess.Popen(['feh', substep_output_path])
-                update = {
-                    "$set": {
-                        "steps." + str(step.__name__): {
-                            "data": step_data,
-                            "path": substep_output_path,
-                            "date": datetime.now()
-                        }
-                    }
-                }
-                # print(update)
-                # , '$unset': {'tags.flip': None}
-                result = my_db.documents.update_one(this, update)
+            update = exec_step(substep_in_queue, document)
+            # print(update)
+            if update is not None:
+                result = my_db.documents.update_one(document, update, upsert=True)
                 if result.modified_count > 0:
-                    print('%s: %s with %s' %
-                          (str(step.__name__), this['file_name'], step_data))
-        feh.kill()
-        document = my_db.documents.find_one(step_query)
+                    data_str = update
+            print('=== %s: %s with %s' %
+                  (str(substep_in_queue[0].__name__), document['file_name'], data_str))
+            # time.sleep(0.05)
 
-
-
-def clean_add_tags(document):
-    document['steps']['numbermanualy']['data']
+            document = my_db.documents.find_one(substep_in_queue[-1])
 
 
 def process(my_db, args):

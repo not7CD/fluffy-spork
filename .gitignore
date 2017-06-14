@@ -6,3 +6,4 @@ config.py
 test
 __pycache__
 tmp*
+autorotate.py
