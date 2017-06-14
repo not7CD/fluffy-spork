@@ -5,3 +5,4 @@ tmp.jpg
 config.py
 test
 __pycache__
+tmp*
