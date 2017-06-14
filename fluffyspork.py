@@ -190,9 +190,20 @@ def process(my_db, args):
             if result.modified_count > 0:
                 print('succ')
 
+    clean_query = {"steps.simple_regexr.data": {'$exists' : True}}
+    cursor = my_db.documents.find(clean_query)
+    for document in cursor:
+        try:
+            print('=====================================\n',document['steps']['simple_regexr']['data']['UNIT3_RE'])
+        except KeyError as e:
+            pass
+        # for key, value in document['steps']['simple_regexr']['data'].items():
+        #     print(key, value)
+
 
 def sort(my_db, args):
     """Sort images based on extrated data"""
+
     pass
 
 
