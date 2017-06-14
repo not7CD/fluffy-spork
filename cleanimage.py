@@ -24,7 +24,7 @@ def imagemagic_textcleaner(inpath, outpath, data=None, tags=None):
                            '-s', '1',
                            '-T',
                            '-p', '5', inpath, outpath])
-    return args
+    return ' '.join(args)
 
 
 def main():

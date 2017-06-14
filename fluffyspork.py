@@ -45,41 +45,43 @@ def preprocess(my_db, args):
         print('Running step: %s' % (step.__name__))
         if not os.path.exists(step_outpath):
             os.makedirs(step_outpath)
-        cursor = my_db.documents.find(step_query)
         feh = subprocess.Popen(['feh', 'tmp.jpg'])
-        for document in cursor:
-            this = {"file_name": document['file_name']}
-            substep_input_path = document['steps'][previous_step]['path']
-            substep_output_path = os.path.join(
-                step_outpath, document['file_name'])
-            tags = None
-            if 'tags' in document:
-                tags = document['tags']
-            step_data = None
-            if 'data' in document['steps'][previous_step]:
-                step_data = document['steps'][previous_step]['data']
-            # print(document['steps'][previous_step])
-            # print(step_data)
-            step_data = step(substep_input_path, substep_output_path,
-                             step_data, tags=tags)
-            feh.kill()
-            feh = subprocess.Popen(['feh', substep_output_path])
-            update = {
-                "$set": {
-                    "steps." + str(step.__name__): {
-                        "data": step_data,
-                        "path": substep_output_path,
-                        "date": datetime.now()
+        document = my_db.documents.find_one(step_query)
+        while document is not None:
+            if True:
+                this = {"file_name": document['file_name']}
+                substep_input_path = document['steps'][previous_step]['path']
+                substep_output_path = os.path.join(
+                    step_outpath, document['file_name'])
+                tags = None
+                if 'tags' in document:
+                    tags = document['tags']
+                step_data = None
+                if 'data' in document['steps'][previous_step]:
+                    step_data = document['steps'][previous_step]['data']
+                # print(document['steps'][previous_step])
+                # print(step_data)
+                step_data = step(substep_input_path, substep_output_path,
+                                 step_data, tags=tags)
+                feh.kill()
+                feh = subprocess.Popen(['feh', substep_output_path])
+                update = {
+                    "$set": {
+                        "steps." + str(step.__name__): {
+                            "data": step_data,
+                            "path": substep_output_path,
+                            "date": datetime.now()
+                        }
                     }
                 }
-            }
-            # print(update)
-            # , '$unset': {'tags.flip': None}
-            result = my_db.documents.update_one(this, update)
-            if result.modified_count > 0:
-                print('%s: %s with %s' %
-                      (str(step.__name__), this['file_name'], step_data))
+                # print(update)
+                # , '$unset': {'tags.flip': None}
+                result = my_db.documents.update_one(this, update)
+                if result.modified_count > 0:
+                    print('%s: %s with %s' %
+                          (str(step.__name__), this['file_name'], step_data))
         feh.kill()
+        document = my_db.documents.find_one(step_query)
 
 
 
