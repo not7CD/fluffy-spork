@@ -11,6 +11,8 @@ import rotate
 import cleanimage
 import resize
 import extract
+import create_dict
+import bruteforce
 
 
 def clean_tags(inpath=None, outpath=None, data=None, tags=None):
@@ -81,14 +83,14 @@ def preprocess(my_db, args):
             os.path.join(args.paths['preprocess'], str(substep.__name__)),
             {"steps." + str(substep.__name__): {"$exists": False}}
         ))
-    substep = cleanimage.imagemagic_textcleaner
-    substep_queue.append(
-        (
-            substep,
-            'resize_300dpi',
-            os.path.join(args.paths['preprocess'], str(substep.__name__)),
-            {"steps." + str(substep.__name__): {"$exists": False}}
-        ))
+    # substep = cleanimage.imagemagic_textcleaner
+    # substep_queue.append(
+    #     (
+    #         substep,
+    #         'resize_300dpi',
+    #         os.path.join(args.paths['preprocess'], str(substep.__name__)),
+    #         {"steps." + str(substep.__name__): {"$exists": False}}
+    #     ))
     substep = extract.simple_tesseract
     substep_queue.append(
         (
@@ -118,6 +120,18 @@ def preprocess(my_db, args):
             os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
             {"steps.simple_regexr.tags": {"$exists": True}}
         ))
+    substep = bruteforce.levenshtein
+    substep_queue.append(
+        (
+            substep,
+            'simple_tesseract',
+            os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
+            {"$or": [
+                {"steps." + str(substep.__name__): {"$exists": False}},
+                {"steps." + str(substep.__name__): None},
+                {"steps." + str(substep.__name__) +'.data.match.departament-name': 'Rektor'}
+                 ]}
+        ))
 
     for substep_in_queue in substep_queue:
         print('== Running step: %s' % (substep_in_queue[0].__name__))
@@ -125,93 +139,31 @@ def preprocess(my_db, args):
             os.makedirs(substep_in_queue[2])
         document = my_db.documents.find_one(substep_in_queue[-1])
         data_str = 'No update'
+        index_left = my_db.documents.find(substep_in_queue[-1]).count()
         while document is not None:
+            index_left -= 1
             update = exec_step(substep_in_queue, document)
-            # print(update)
             if update is not None:
-                result = my_db.documents.update_one(document, update, upsert=True)
+                result = my_db.documents.update_one(
+                    document, update, upsert=True)
                 if result.modified_count > 0:
                     data_str = update
-            print('=== %s: %s with %s' %
-                  (str(substep_in_queue[0].__name__), document['file_name'], data_str))
-            # time.sleep(0.05)
+            print('=== %s left ===\n=== %s: %s\n%s' %
+                  (index_left, str(substep_in_queue[0].__name__), document['file_name'], data_str))
 
             document = my_db.documents.find_one(substep_in_queue[-1])
 
 
-def process(my_db, args):
-    """Data extraction from images"""
-    clean_query = {"$or": [{"steps.numbermanualy.data": 'flip'}, {
-        "steps.numbermanualy.data": 'horizontal'}]}
-    cursor = my_db.documents.find(clean_query)
-    for document in cursor:
-        this = {"file_name": document['file_name']}
-        tags = {}
-        try:
-            if 'tags' in document:
-                tags = document['tags']
-        except TypeError:
-            pass
-        try:
-            if 'flip' in document['steps']['numbermanualy']['data']:
-                tag = 'flip'
-                tags[tag] = 0
-        except TypeError:
-            pass
-        update = {"$set": {"steps.numbermanualy.data": ""},
-                  "$unset": {"flip": 0}}
-        update["$set"].update({'tags': tags})
-        print(update)
-        result = my_db.documents.update_one(this, update)
-
-    substep_queue = [
-        (numbermanualy.process_manualy,
-         {"$or": [{"steps.numbermanualy": {"$exists": False}}, {"steps.numbermanualy.data": ""}]})
-    ]
-    for substep, query in substep_queue:
-        cursor = my_db.documents.find(query)
-        i_left = cursor.count()
-        for document in cursor:
-            this = {"file_name": document['file_name']}
-            data = substep(document)
-            i_left -= 1
-
-            print('Got: %s, (%s left)' % (data, i_left))
-
-            update = {
-                "$set": {
-                    "steps.numbermanualy": {
-                        "data": data,
-                        "date": datetime.now()
-                    }
-                }
-            }
-            result = my_db.documents.update_one(this, update)
-            if result.modified_count > 0:
-                print('succ')
-
-    clean_query = {"steps.simple_regexr.data": {'$exists' : True}}
-    cursor = my_db.documents.find(clean_query)
-    for document in cursor:
-        try:
-            print('=====================================\n',document['steps']['simple_regexr']['data']['UNIT3_RE'])
-        except KeyError as e:
-            pass
-        # for key, value in document['steps']['simple_regexr']['data'].items():
-        #     print(key, value)
-
-
 def sort(my_db, args):
     """Sort images based on extrated data"""
-
-    pass
+    substep_queue = []
 
 
 def main(args):
     client = MongoClient()
     db = client[args.database['name']]
 
-    step_queue = (preprocess, process, sort)
+    step_queue = (preprocess, sort)
 
     if args.add_paths is not None:
         for path in args.add_paths:

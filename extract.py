@@ -16,6 +16,8 @@ RE_LIST = [
         r'(organizacyjna\s{0,2}\W?)\s([\S\s]{0,200})?', re.IGNORECASE)),
     ('UNIT2_RE', re.compile(
         r'(\wrg\wn\wz\wc\wjn\w\s{0,2}\W?)\s([\S\s]{0,200})?', re.IGNORECASE)),
+    ('UNIT4_RE', re.compile(
+        r'(pr\wz\wc\wjn\w\s{0,2}\W?)\s([\S\s]{0,200})?', re.IGNORECASE)),
     ('UNIT3_RE', re.compile(
         r'(K\wt\wd\wr\w\s{0,2})([\S\s]{0,100})?', re.IGNORECASE))
 ]
