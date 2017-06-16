@@ -23,4 +23,4 @@ def levenshtein(inpath=None, outpath=None, data=None, tags=None):
         print("SCORE: %s\n%s\n%s" % (best_ratio, best_sentence, best_departament['departament-name']))
     except TypeError as e:
         print("SCORE: %s\n%s\n%s\n%s" % (best_ratio, best_sentence, best_departament, e))
-    return ({'data': {'score': best_ratio, 'sentence': best_sentence, 'match': best_departament}, 'path': inpath}, None)
+    return ({'data': {'score': best_ratio, 'sentence': best_sentence, 'match': best_departament}}, None)
