@@ -52,10 +52,10 @@ def exec_step(step_tulpe, document):
             "data": step_data,
             "path": substep_output_path
         }
-        set_dict["date"] = datetime.now()
     if set_dict == {}:
         update = None
     else:
+        set_dict["date"] = datetime.now()
         update = {"$set": {"steps." + str(step.__name__): set_dict}}
         if unset_dict is not None:
             update["$unset"] = unset_dict
@@ -112,14 +112,15 @@ def preprocess(my_db, args):
                  ".tags": {"$exists": False}}
             ]}
         ))
-    substep = clean_tags
-    substep_queue.append(
-        (
-            substep,
-            'simple_regexr',
-            os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
-            {"steps.simple_regexr.tags": {"$exists": True}}
-        ))
+    # substep = clean_tags
+    # substep_queue.append(
+    #     (
+    #         substep,
+    #         'simple_regexr',
+    #         os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
+    #         {"steps.simple_regexr.tags": {"$exists": True}}
+    #     ))
+    timeOld = datetime.today().replace(hour=13)
     substep = bruteforce.levenshtein
     substep_queue.append(
         (
@@ -128,8 +129,19 @@ def preprocess(my_db, args):
             os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
             {"$or": [
                 {"steps." + str(substep.__name__): {"$exists": False}},
+                {"steps." + str(substep.__name__): None}
+                 ]}
+        ))
+    substep = bruteforce.job_titles
+    substep_queue.append(
+        (
+            substep,
+            'simple_tesseract',
+            os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
+            {"$or": [
+                {"steps." + str(substep.__name__): {"$exists": False}},
                 {"steps." + str(substep.__name__): None},
-                {"steps." + str(substep.__name__) +'.data.match.departament-name': 'Rektor'}
+                {"steps." + str(substep.__name__)+ ".date": {"$lt": timeOld}}
                  ]}
         ))
 
