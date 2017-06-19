@@ -61,7 +61,8 @@ def human_validate(compare, raw):
         if not_robot_name == "???":
             return not_robot_name
         else:
-            bfc = bruteforce.levenshtein(data=not_robot_name)
+            not_robot_name += '                  '
+            bfc = bruteforce.job_titles(data=not_robot_name)
             # print(bfc)
             # dirty fix
             cmp = highlight_data(not_robot_name, bfc[0]['data'])

@@ -120,7 +120,7 @@ def preprocess(my_db, args):
     #         os.path.join(args.paths['preprocess'], 'imagemagic_textcleaner'),
     #         {"steps.simple_regexr.tags": {"$exists": True}}
     #     ))
-    timeOld = datetime.today().replace(hour=13)
+    timeOld = datetime.today().replace(hour=14, minute=45)
     substep = bruteforce.levenshtein
     substep_queue.append(
         (

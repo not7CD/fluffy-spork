@@ -13,22 +13,23 @@ def job_titles(inpath=None, outpath=None, data=None, tags=None):
     for elt in JOB_TITLES['job_titles']:
         # print('------\n%s %s' %  (i, dep['departament-name']))
         elt_len = len(elt)
-        if elt_len > 5:
+        if elt_len > 4:
             if len(data) - elt_len < elt_len:
                 ratio = lv.jaro(data.lower(), elt.lower())
-                if best_ratio is None or ratio.real > best_ratio:
-                    best_ratio = ratio.real
+                real_ratio = ratio.real + (elt_len * 0.001)
+                if best_ratio is None or real_ratio > best_ratio:
+                    best_ratio = real_ratio
                     best_sentence = data
                     best_match = elt
             # print(i, ratio, best_ratio, elt)
             for x in range(len(data) - elt_len):
                 ratio = lv.jaro(data[x:x + elt_len].lower(), elt.lower())
-                real_ratio = ratio.real + (elt_len * 0.001) - (x * 0.001)
+                real_ratio = ratio.real + (elt_len * 0.004) - (x * 0.001)
                 if best_ratio is None or real_ratio > best_ratio:
                     best_ratio = real_ratio
                     best_sentence = data[x:x + elt_len]
                     best_match = elt
-                # print(i, ratio, best_ratio, elt)
+                # print(ratio, best_ratio, elt)
 
     try:
         print("SCORE: %s\n%s\n%s" %
