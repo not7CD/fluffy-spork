@@ -20,12 +20,18 @@ def main(my_db, query):
         new_path = os.path.join(MAIN_DIR, data_dep)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
+
+        num_z = ''
         try:
-            new_path = os.path.join(new_path, str(data_num).zfill(
-                5) + "_" + data_job['match'] + "_" + document['file_name'])
-        except KeyError:
-            new_path = os.path.join(new_path, str(data_num).zfill(
-                5) + "_???_" + document['file_name'])
+            num_z = str(data_num).zfill(5)
+        except TypeError as e:
+            if len(data_num) < 5:
+                num_z += '0'
+            num_z += data_num
+        try:
+            new_path = os.path.join(new_path, num_z + "_" + data_job['match'] + "_" + document['file_name'])
+        except TypeError:
+            new_path = os.path.join(new_path, num_z + "_???_" + document['file_name'])
         with Image.open(im_path) as im:
             print("->", new_path)
             im.save(new_path)
